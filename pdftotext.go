@@ -137,6 +137,35 @@ func ExtractInPopplerTsv(pdfBytes []byte) (tsvRows []PopplerTsvRow, err error) {
 	return tsvRows, nil
 }
 
+func ExtractWithLayout(pdfBytes []byte) (pdfPages []PdfPage, err error) {
+	params := []string{
+		"-layout",
+		"-nodiag",
+		"-", // Read from stdin
+		"-", // Write to stdout
+	}
+
+	cmd := exec.Command("pdftotext", params...)
+	cmd.Stdin = bytes.NewReader(pdfBytes)
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	if err = cmd.Run(); err != nil {
+		return nil, fmt.Errorf("error executing pdftotext binary: %w", err)
+	}
+
+	pages := bytes.Split(out.Bytes(), []byte("\f"))
+	for i, page := range pages {
+		pdfPages = append(pdfPages, PdfPage{
+			Content: string(page),
+			Number:  i + 1,
+		})
+	}
+
+	return pdfPages, nil
+}
+
 func CheckPopplerVersion() (fullVersionString string, err error) {
 	cmd := exec.Command("pdftotext", "-v")
 
